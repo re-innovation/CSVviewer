@@ -1,5 +1,5 @@
 """
-plotter.py
+csv_plotter.py
 
 @author: James Fowkes
 
@@ -7,16 +7,8 @@ Defines a data plotter for the CSV viewer application using
 
 """
 
-import matplotlib.pyplot as plt
-#import wx
-
-from matplotlib.figure import Figure
-#from matplotlib.backends.backend_wxagg import figureCanvasWxAgg as FigCanvas, NavigationToolbar2WxAgg as NavigationToolbar
- 
-#matplotlib.use('WXAgg')
-
-APP_TITLE = "CSV Viewer"
-        
+from numpy import arange, sin, pi
+    
 class DataSet:
 
     def __init__(self, ylabel, data, times):
@@ -26,40 +18,65 @@ class DataSet:
         
 class CSV_Plotter:
 
-    def __init__(self):
-        self.first = True
+    def __init__(self, config):
+        self.config = config
+        self.suspend = False        
+        self.clear_data()
+    
+    def suspend_draw(self, suspend):
+        self.suspend = suspend
         
-        self.subfigure_count = 0
-        self.subfigure_data = []
+    def clear_data(self):
+        self.subplot_visible = [False, False, False]
+        self.subplot_data = [None, None, None]
+    
+    def apply_units_to_axis_label(self, label):
+        # Get unit strings from config
+        units = self.config['UNITS']
+     
+        try:
+            #Try adding a unit to the field name
+            label = label + " " + units[label].strip()
+        except KeyError:
+            pass #If no unit exists, just use the field name
         
-        plt.ion()
+        return label
         
-        #self.frame = ApplicationFrame()
-
-    def add_dataset(self, times, dataset, axis_label):
-        if self.subfigure_count < 3:
-            
-            self.subfigure_count += 1            
-            self.subfigure_data.append(DataSet(axis_label, dataset, times))
-            
+    def set_dataset(self, times, dataset, axis_label, field_index):
+        if field_index < 3:
+            axis_label = self.apply_units_to_axis_label(axis_label)
+            self.subplot_data[field_index] = DataSet(axis_label, dataset, times)
+    
+    def set_visibility(self, plot, show):
+        self.subplot_visible[plot] = show
+        
     def close(self):
         plt.close()
+           
+    def draw(self, f):
         
-    def show(self):
-    
-        plt.close('all')
-        f, axarr = plt.subplots(self.subfigure_count)
+        if self.suspend:
+            return # Drawing has been suspended
+            
+        f.clf()
         
-        if self.subfigure_count == 1:
-            axarr = [axarr]
+        first_axis = None
+        plot_count = 0
+        for idx in range(3):
+            if self.subplot_visible[idx]: #Only show visible plots
+                a = f.add_subplot(self.visible_count, 1, plot_count+1, sharex=first_axis) #sharex parameter means axes will zoom as one w.r.t x-axis
+                a.tick_params(axis='both', which='major', labelsize=10)
+                a.plot(self.subplot_data[idx].times, self.subplot_data[idx].data)   
+                a.set_ylabel(self.subplot_data[idx].ylabel, fontsize=10)
                 
-        for idx in range(self.subfigure_count):
-            axarr[idx].plot(self.subfigure_data[idx].times, self.subfigure_data[idx].data)
-            axarr[idx].set_ylabel(self.subfigure_data[idx].ylabel)
+                #Save the first subplot so that other plots can share its x axis
+                first_axis = a if idx == 0 else first_axis
+                
+                #Keep track of number of visible plots
+                plot_count += 1
+                
+        f.autofmt_xdate() # Nice formatting for dates (diagonal, only on bottom axis)
         
-        if self.first:
-            self.first = False
-            plt.show()
-        else:
-            plt.draw()
-    
+    @property
+    def visible_count(self):
+        return self.subplot_visible.count(True)

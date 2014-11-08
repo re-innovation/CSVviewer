@@ -12,11 +12,8 @@ import logging
 import configparser
 import codecs
 
-from tkinter import *
-from tkinter.filedialog import askdirectory
-
 from csv_parser import CSV_Parser
-#from csv_gui import CSV_GUI, Actions
+from csv_gui import CSV_GUI
 from csv_plotter import CSV_Plotter
 
 from menu import Menu, MenuOption
@@ -36,33 +33,17 @@ def get_module_logger():
 
     """ Returns logger for this module """
     return logging.getLogger(__name__)
-
+       
 class Application:
     
     def __init__(self, args, config):
-    
-        ## Try to get a parser for the provided folder.
-        ## The folder might not exist - in which case start application anyway
-        ## and the user can select a folder from menus.
         
-        self.parser = CSV_Parser(args.start_folder)
+        self.parser = CSV_Parser(None)
+        
         self.config = config
         
-        self.plotter = CSV_Plotter()
-        
-        self.menu = Menu()
-        self.menu.add_title(['0'], "Main Menu")
-        self.menu.add_options(['0'], 
-            [
-                MenuOption("Display graph", None, self.action_display_graph),
-                MenuOption("Print data summary", None, self.action_print_summary),
-                MenuOption("Exit", 'x', self.action_exit)
-            ]
-        )
-        
-        
-        #self.wx_app = wx.PySimpleApp()
-        #self.gui = CSV_GUI(self.wx_app, self.action_handler)
+        self.plotter = CSV_Plotter(config)
+        self.gui = CSV_GUI(self)
     
     def action_print_summary(self, menu_level):
         print("Current directory: %s" % self.parser.folder)
@@ -71,45 +52,93 @@ class Application:
         print("Data fields:")
         for field in self.parser.fields:
             print("\t" + field)
+    
+    def action_subplot1_change(self, dataset_choice):
+        """ Pass though to action_subplot_change """
+        self.action_subplot_change(0, dataset_choice)
         
-    def action_display_graph(self, menu_level):
-        self.display_graph = True
+    def action_subplot2_change(self, dataset_choice):
+        """ Pass though to action_subplot_change """
+        self.action_subplot_change(1, dataset_choice)
         
-    def action_exit(self, menu_level):
-            self.plotter.close()
-            sys.exit(0)
-          
-    def get_and_process_menu_input(self):
-        self.menu.print_title()
-        self.menu.print_menu()
+    def action_subplot3_change(self, dataset_choice):
+        """ Pass though to action_subplot_change """
+        self.action_subplot_change(2, dataset_choice)
+    
+    def action_subplot_change(self, subplot_index, display_name):
+
+        if display_name == "None":
+            self.plotter.set_visibility(subplot_index, False)
+            self.gui.set_displayed_field(display_name, subplot_index)
+            self.gui.set_dataset_choices(self.parser.get_numeric_fields())
+        else:
+            field_name = self.parser.get_field_name_from_display_name(display_name)
+            self.plotter.set_visibility(subplot_index, True)
+            self.gui.set_displayed_field(display_name, subplot_index)
+            self.gui.set_dataset_choices(self.parser.get_numeric_fields())
+            self.plotter.set_dataset(self.parser.get_timestamps(field_name), self.parser.get_dataset(field_name), display_name, subplot_index)
         
-        next_input = input()
-        self.menu.process_input(next_input)
+        self.gui.draw(self.plotter)
+            
+    def action_average_data(self):
+        # Get the dataset of interest and convert display name to field name
+        display_name = self.gui.get_averaging_displayname()       
+
+        try:
+            field_name = self.parser.get_field_name_from_display_name(display_name)
+        except IndexError:
+            return # Display name does not exist  
+
+        # Get the time period over which to average
+        try:
+            time_period = self.gui.get_averaging_time_period()
+        except ValueError:
+            return # Could not convert time period to float
         
+        if time_period == 0:
+            return # Cannot average over zero time!
+
+        # Get the units the time period is in (seconds, minutes etc.)
+        time_units = self.gui.get_averaging_time_units()
+
+        print("Averaging %s over %d %s" % (field_name, time_period, time_units.lower()))
+       
+            
+    def action_new_data(self):
+        
+        new_directory = self.gui.ask_directory("Choose directory to process")
+        
+        if new_directory != '' and self.parser.directory_has_data_files(new_directory):
+            self.parser.parse(new_directory)
+            self.plot_default_datasets()
+            
     def run(self):
-        self.display_graph = False
+        self.gui.run()
+       
+    def plot_default_datasets(self):
         
-        # Display the default fields
+        self.plotter.clear_data()
+        
+        # Get the default fields from config
         default_fields = self.config['DEFAULT']['DefaultFields']
         default_fields = [field.strip() for field in default_fields.split(",")]
+
+        # Drawing mutiple plots, so turn off drawing until all three are processed
+        self.plotter.suspend_draw(True)
         
-        # Read in any unit strings
-        units = self.config['UNITS']
-        
+        field_count = 0
         for field in default_fields:
-            if field in self.parser.fields:
-                try:
-                    label = field + " " + units[field].strip()
-                except KeyError:
-                    label = field
-                    
-                self.plotter.add_dataset(self.parser.timestamps, self.parser.get_dataset(field), axis_label = label)
+            if field in self.parser.get_fields():
+                display_name = self.parser.get_display_name(field)
                 
-        while True:
-            self.get_and_process_menu_input()
-            if self.display_graph:
-                self.display_graph = False
-                self.plotter.show()
+                self.action_subplot_change(field_count, display_name)
+                field_count += 1
+        
+        # Now the plots can be drawn
+        self.plotter.suspend_draw(False)
+        
+        self.gui.set_dataset_choices(self.parser.get_numeric_fields())
+        self.gui.draw(self.plotter)
         
 def main():
 
@@ -122,14 +151,9 @@ def main():
     arg_parser = get_arg_parser()
     args = arg_parser.parse_args()
     
-    conf_parser = configparser.ConfigParser()
+    conf_parser = configparser.RawConfigParser()
     conf_parser.read_file(codecs.open("config.ini", "r", "utf8"))
-    
-    if args.start_folder is None:
-        root = Tk()
-        root.withdraw()
-        args.start_folder = askdirectory()
-        
+            
     app = Application(args, conf_parser)
     
     app.run()
