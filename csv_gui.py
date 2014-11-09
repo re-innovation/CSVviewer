@@ -56,9 +56,9 @@ class TkOptionMenuHelper(Tk.OptionMenu):
         self.var.set(self.title)
         
 class TkEntryHelper(Tk.Entry):
-    def __init__(self, master):
+    def __init__(self, master, **kwargs):
         self.var = Tk.StringVar(master)
-        Tk.Entry.__init__(self, master, textvariable=self.var)
+        Tk.Entry.__init__(self, master, textvariable=self.var, **kwargs)
         
 class CSV_GUI:
 
@@ -105,8 +105,8 @@ class CSV_GUI:
         self.canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
 
     def add_interface(self):
-        self.app_frame = Tk.Frame(self.root)
-        self.control_frame = Tk.Frame(self.root)
+        self.app_frame = Tk.Frame(self.root, bd=1, relief=Tk.SUNKEN)
+        self.control_frame = Tk.Frame(self.root, bd=1, relief=Tk.SUNKEN)
         
         self.plot_select_frame = Tk.Frame(self.control_frame)
         self.data_control_frame = Tk.Frame(self.control_frame)
@@ -145,43 +145,45 @@ class CSV_GUI:
         get_module_logger().info("Setting dataset choices %s", ','.join(datasets))
         
         if not self.ui_exists:
-            self.ui_exists = True
-            
-            self.control_frames = [Tk.Frame(self.data_control_frame), Tk.Frame(self.data_control_frame)]
-            
-            self.control_frame_label = Tk.Label(self.control_frames[0], text="Dataset Averaging")                    
-            
-            self.dataset_average_picker = TkOptionMenuHelper(self.control_frames[1], "Select dataset", self.display_fields, command=None)  
-            self.dataset_average_period_label = Tk.Label(self.control_frames[1], text="Average every:")
-            self.dataset_average_text_entry = TkEntryHelper(self.control_frames[1])
-            self.dataset_average_period_picker = TkOptionMenuHelper(self.control_frames[1], "Seconds", ["Seconds", "Minutes", "Hours", "Days", "Weeks"], command=None, width=10)
-            self.dataset_average_button = Tk.Button(self.control_frames[1], text='Apply', command=self.application.action_average_data)
+            self._draw_ui()
 
-            self.dataset_average_picker.pack(side=Tk.LEFT, padx=2, pady=2)
-            self.dataset_average_period_label.pack(side=Tk.LEFT, padx=2, pady=2)
-            self.dataset_average_text_entry.pack(side=Tk.LEFT, padx=2, pady=2)
-            self.dataset_average_period_picker.pack(side=Tk.LEFT, padx=2, pady=2)
-            self.dataset_average_button.pack(side=Tk.LEFT, padx=2, pady=2)
+        self.refresh_subplot_lists(datasets)
+        self.dataset_average_picker.set_options(self.display_fields)
+        
+        for (i, picker) in enumerate(self.subplot_pickers):
+            picker.set_options(self.subplot_lists[i])
             
-            self.control_frame_label.pack(side=Tk.LEFT, padx=3, pady=3)
+    def _draw_ui(self):
+        # This is the first time drawing the full UI
+        self.ui_exists = True
+        
+        self.control_frames = [Tk.Frame(self.data_control_frame), Tk.Frame(self.data_control_frame)]
+        
+        self.dataset_average_picker = TkOptionMenuHelper(self.control_frames[1], "Select dataset", ["Select dataset"], command=None)  
+        self.dataset_average_period_label = Tk.Label(self.control_frames[1], text="Average every:")
+        self.dataset_average_text_entry = TkEntryHelper(self.control_frames[1], width=10)
+        self.dataset_average_period_picker = TkOptionMenuHelper(self.control_frames[1], "Seconds", ["Seconds", "Minutes", "Hours", "Days", "Weeks"], command=None, width=10)
+        self.dataset_average_button = Tk.Button(self.control_frames[1], text='Apply', command=self.application.action_average_data)
+        self.dataset_average_reset_button = Tk.Button(self.control_frames[1], text='Reset', command=self.application.reset_average_data)
+    
+        self.dataset_average_picker.pack(side=Tk.LEFT, padx=2, pady=2)
+        self.dataset_average_period_label.pack(side=Tk.LEFT, padx=2, pady=2)
+        self.dataset_average_text_entry.pack(side=Tk.LEFT, padx=2, pady=2)
+        self.dataset_average_period_picker.pack(side=Tk.LEFT, padx=2, pady=2)
+        self.dataset_average_button.pack(side=Tk.LEFT, padx=2, pady=2)
+        self.dataset_average_reset_button.pack(side=Tk.LEFT, padx=2, pady=2)
+        
+        for frame in self.control_frames:
+            frame.pack(side=Tk.TOP, padx=3, pady=3)
+        
+        # Subplot dataset pickers and label
+        self.subplot_picker_label = Tk.Label(self.plot_select_frame, text="Select plots:")
+        self.subplot_pickers = [TkOptionMenuHelper(self.plot_select_frame, self.plot_picker_titles[i], [self.plot_picker_titles[i]], command=self.subplot_actions[i]) for i in range(3)]
+        
+        self.subplot_picker_label.pack(side=Tk.LEFT)
+        for picker in self.subplot_pickers:
+            picker.pack(side=Tk.LEFT)
             
-            for frame in self.control_frames:
-                frame.pack(side=Tk.TOP, padx=3, pady=3)
-            
-            self.refresh_subplot_lists(datasets)
-                
-            self.subplot_pickers = [TkOptionMenuHelper(self.plot_select_frame, self.plot_picker_titles[i], self.subplot_lists[i], command=self.subplot_actions[i]) for i in range(3)]
-            
-            for picker in self.subplot_pickers:
-                picker.pack(side=Tk.LEFT)
-
-        else:
-            self.refresh_subplot_lists(datasets)
-            self.dataset_average_picker.set_options(self.display_fields)
-            
-            for (i, picker) in enumerate(self.subplot_pickers):
-                picker.set_options(self.subplot_lists[i])
-
     def get_index_of_displayed_plot(self, display_name):
         """ Returns the subplot index (0 to 2) of the plot with the requested display name (None if name is not displayed) """
         try:

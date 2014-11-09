@@ -10,6 +10,9 @@ A Python application for graphically displaying data in .CSV files from datalogg
 
 ## Version Information:
 
+### Version 2.2
+* Averaging can be reset for a plot
+
 ### Version 2.1
 * Averaging is now functional
 

@@ -79,7 +79,7 @@ class Application:
         self.gui.draw(self.plotter)
             
     def action_average_data(self):
-        # Get the dataset of interest and convert display name to field name
+        # Get the dataset of interest
         display_name = self.gui.get_averaging_displayname()       
 
         # Get the time period over which to average
@@ -106,6 +106,13 @@ class Application:
         
         self.plotter.set_dataset(timestamps, data, display_name, index)
         
+        self.gui.draw(self.plotter)
+    
+    def reset_average_data(self):
+        # Get the dataset of interest and reset the original data 
+        display_name = self.gui.get_averaging_displayname()       
+        subplot_index = self.gui.get_index_of_displayed_plot(display_name)
+        self.plotter.set_dataset(self.parser.get_timestamps(display_name), self.parser.get_dataset(display_name), display_name, subplot_index)
         self.gui.draw(self.plotter)
         
     def action_new_data(self):
