@@ -17,6 +17,9 @@ from csv_datamanager import CSV_DataManager
 from csv_gui import CSV_GUI
 from csv_plotter import CSV_Plotter
 
+APP_TITLE = "CSV Viewer"
+VERSION = "2.3"
+    
 def get_arg_parser():
     """ Return a command line argument parser for this module """
     arg_parser = argparse.ArgumentParser(
@@ -43,7 +46,10 @@ class Application:
         
         self.plotter = CSV_Plotter(config)
         self.gui = CSV_GUI(self)
-    
+        
+    def get_title(self):
+        return APP_TITLE
+        
     def action_print_summary(self, menu_level):
         print("Current directory: %s" % self.parser.folder)
         print("Found %d valid .csv files" % self.parser.file_count)
@@ -52,16 +58,32 @@ class Application:
         for field in self.parser.fields:
             print("\t" + field)
     
+    def action_about_dialog(self):
+        """ Show information about this program """
+        info = """
+        %s
+        Version %s
+        
+        Created by:
+        Matt Little
+        James Fowkes
+        
+        http://www.re-innovation.co.uk
+        Nottingham, UK
+        """ % (APP_TITLE, VERSION)
+        
+        self.gui.show_info_dialog(info)
+        
     def action_subplot1_change(self, dataset_choice):
-        """ Pass though to action_subplot_change """
+        """ Pass through to action_subplot_change """
         self.action_subplot_change(0, dataset_choice)
         
     def action_subplot2_change(self, dataset_choice):
-        """ Pass though to action_subplot_change """
+        """ Pass through to action_subplot_change """
         self.action_subplot_change(1, dataset_choice)
         
     def action_subplot3_change(self, dataset_choice):
-        """ Pass though to action_subplot_change """
+        """ Pass through to action_subplot_change """
         self.action_subplot_change(2, dataset_choice)
     
     def action_subplot_change(self, subplot_index, display_name):

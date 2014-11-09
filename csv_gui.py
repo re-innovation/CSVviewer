@@ -21,8 +21,6 @@ from matplotlib.figure import Figure
 import tkinter as Tk
 from tkinter import messagebox, filedialog
 
-APP_TITLE = "CSV Viewer"
-
 def get_module_logger():
 
     """ Returns logger for this module """
@@ -63,13 +61,16 @@ class TkEntryHelper(Tk.Entry):
 class CSV_GUI:
 
     def __init__(self, application):
+        
+        self.application = application
+        self.title = self.application.get_title()
         self.root = Tk.Tk()
-        self.root.wm_title(APP_TITLE)
+        self.root.wm_title(self.title)
         self.root.protocol("WM_DELETE_WINDOW", self._exit)
         
         get_module_logger().setLevel(logging.INFO)
         
-        self.application = application
+        
         self.display_fields = [None, None, None]
         
         self.plot_picker_titles = ["Upper Plot Data", "Middle Plot Data", "Lower Plot Data"]
@@ -113,6 +114,9 @@ class CSV_GUI:
         
         self.new_data_button = Tk.Button(self.app_frame, text='Open CSV Folder', command=self.application.action_new_data)
         self.new_data_button.pack(padx=10, pady=10)
+        
+        self.about_button = Tk.Button(self.app_frame, text='About CSV Viewer', command=self.application.action_about_dialog)
+        self.about_button.pack(padx=10, pady=10)
         
         self.exit_button = Tk.Button(self.app_frame, text='Exit', command=self._exit)
         self.exit_button.pack(padx=10, pady=10)
@@ -194,9 +198,12 @@ class CSV_GUI:
     def draw(self, plotter):
         plotter.draw(self.f)
         self.canvas.draw()
+    
+    def show_info_dialog(self, text):
+        messagebox.showinfo(self.title, text)
         
     def _exit(self):
-        if messagebox.askyesno(APP_TITLE, "Exit %s?" % APP_TITLE):
+        if messagebox.askyesno(self.title, "Exit %s?" % self.title):
             self.root.quit()
             if os.name=="nt":
                 self.root.destroy()  # this is necessary on Windows to prevent "Fatal Python Error: PyEval_RestoreThread: NULL tstate"
