@@ -93,6 +93,12 @@ class CSV_DataManager:
         """ Return data for the requested series """
         field_name = self._display_to_field_dict[display_name]
         return list(self.dataframes[field_name].values)
+    
+    def get_dataset_average(self, display_name, average_time_seconds):
+        """ Use resampling functionality to get average of dataset over requested number of seconds """
+        field_name = self._display_to_field_dict[display_name]
+        resampled_data = self.dataframes[field_name].resample("%dL" % (average_time_seconds * 1000))
+        return (list(resampled_data[field_name].values), list(resampled_data[field_name].index))
         
     def _set_fieldnames(self, names):
         # Get a set of display names from field names

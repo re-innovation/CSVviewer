@@ -10,6 +10,9 @@ A Python application for graphically displaying data in .CSV files from datalogg
 
 ## Version Information:
 
+### Version 2.1
+* Averaging is now functional
+
 ### Version 2.0
 * Removed csv_parser.py and replaced with csv_datamanager.py
 * Uses pandas library to provide better dataset math functionality

@@ -68,26 +68,19 @@ class Application:
 
         get_module_logger().info("Changing subplot %d to %s", subplot_index, display_name)
         
-        if display_name == "None":
-            self.plotter.set_visibility(subplot_index, False)
-            self.gui.set_displayed_field(display_name, subplot_index)
-            self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
-        else:
-            self.plotter.set_visibility(subplot_index, True)
-            self.gui.set_displayed_field(display_name, subplot_index)
-            self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
-            self.plotter.set_dataset(self.parser.get_timestamps(display_name), self.parser.get_dataset(display_name), display_name, subplot_index)
+        self.plotter.set_visibility(subplot_index, display_name != "None")
+        self.gui.set_displayed_field(display_name, subplot_index)
         
+        self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
+
+        if display_name != "None":
+            self.plotter.set_dataset(self.parser.get_timestamps(display_name), self.parser.get_dataset(display_name), display_name, subplot_index)
+
         self.gui.draw(self.plotter)
             
     def action_average_data(self):
         # Get the dataset of interest and convert display name to field name
         display_name = self.gui.get_averaging_displayname()       
-
-        try:
-            field_name = self.parser.get_field_name_from_display_name(display_name)
-        except IndexError:
-            return # Display name does not exist  
 
         # Get the time period over which to average
         try:
@@ -101,9 +94,20 @@ class Application:
         # Get the units the time period is in (seconds, minutes etc.)
         time_units = self.gui.get_averaging_time_units()
 
-        get_module_logger.info("Averaging %s over %d %s", field_name, time_period, time_units.lower())
+        get_module_logger().info("Averaging %s over %d %s", display_name, time_period, time_units.lower())
        
-            
+        time_multipliers = {"Seconds":1, "Minutes":60, "Hours":60*60, "Days":24*60*60, "Weeks":7*24*60*60}
+        
+        time_period_seconds = time_period * time_multipliers[time_units]
+        
+        (data, timestamps) = self.parser.get_dataset_average(display_name, time_period_seconds)
+       
+        index = self.gui.get_index_of_displayed_plot(display_name)
+        
+        self.plotter.set_dataset(timestamps, data, display_name, index)
+        
+        self.gui.draw(self.plotter)
+        
     def action_new_data(self):
         
         new_directory = self.gui.ask_directory("Choose directory to process")
@@ -136,9 +140,8 @@ class Application:
                 field_count += 1
         
         # Now the plots can be drawn
-        self.plotter.suspend_draw(False)
-        
         self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
+        self.plotter.suspend_draw(False)
         self.gui.draw(self.plotter)
         
 def main():

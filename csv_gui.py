@@ -55,9 +55,6 @@ class TkOptionMenuHelper(Tk.OptionMenu):
             self['menu'].add_command(label=opt, command=lambda val=opt: self.on_var_change(val))
         self.var.set(self.title)
         
-        #Tk.OptionMenu.__init__(self, self.master, self.var, *new_options, command=self.application_callback)
-        #self.config(width=self.width)
-        
 class TkEntryHelper(Tk.Entry):
     def __init__(self, master):
         self.var = Tk.StringVar(master)
@@ -89,7 +86,7 @@ class CSV_GUI:
     
     def set_displayed_field(self, display_name, index):
         get_module_logger().info("Setting subplot %d to %s", index, display_name)
-        self.display_fields[index] = display_name
+        self.display_fields[index] = display_name   
         
     def ask_directory(self, title):
         """ Brings up Tk askdirectory window and if there are valid files, redraws plot """
@@ -126,7 +123,11 @@ class CSV_GUI:
         self.data_control_frame.pack()
 
     def refresh_subplot_lists(self, datasets):
-        datasets.append("None") #Each list also needs a "None" selection to hide the plot
+        """ When a plot changes, this function produces new lists for each plot's dropdown menu 
+        The dropdown menus have a selection of all datasets EXCEPT that currently shown for that plot,
+        plus there's a "None" entry to hide the plot """
+        
+        datasets.append("None")
         self.subplot_lists = [[dataset for dataset in datasets if dataset != self.display_fields[i]] for i in range(3)]
     
     def get_averaging_displayname(self):
@@ -140,7 +141,7 @@ class CSV_GUI:
         
     def set_dataset_choices(self, datasets):
         """ Sets the list of possible datasets that can be selected for each plot """
-        
+
         get_module_logger().info("Setting dataset choices %s", ','.join(datasets))
         
         if not self.ui_exists:
@@ -150,7 +151,7 @@ class CSV_GUI:
             
             self.control_frame_label = Tk.Label(self.control_frames[0], text="Dataset Averaging")                    
             
-            self.dataset_average_picker = TkOptionMenuHelper(self.control_frames[1], "Select dataset", datasets, command=None)  
+            self.dataset_average_picker = TkOptionMenuHelper(self.control_frames[1], "Select dataset", self.display_fields, command=None)  
             self.dataset_average_period_label = Tk.Label(self.control_frames[1], text="Average every:")
             self.dataset_average_text_entry = TkEntryHelper(self.control_frames[1])
             self.dataset_average_period_picker = TkOptionMenuHelper(self.control_frames[1], "Seconds", ["Seconds", "Minutes", "Hours", "Days", "Weeks"], command=None, width=10)
@@ -176,11 +177,18 @@ class CSV_GUI:
 
         else:
             self.refresh_subplot_lists(datasets)
-            self.dataset_average_picker.set_options(datasets)
+            self.dataset_average_picker.set_options(self.display_fields)
             
             for (i, picker) in enumerate(self.subplot_pickers):
                 picker.set_options(self.subplot_lists[i])
-                
+
+    def get_index_of_displayed_plot(self, display_name):
+        """ Returns the subplot index (0 to 2) of the plot with the requested display name (None if name is not displayed) """
+        try:
+            return self.display_fields.index(display_name)
+        except:
+            return None
+            
     def draw(self, plotter):
         plotter.draw(self.f)
         self.canvas.draw()
