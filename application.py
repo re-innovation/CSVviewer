@@ -12,11 +12,10 @@ import logging
 import configparser
 import codecs
 
-from csv_parser import CSV_Parser
+#from csv_parser import CSV_Parser
+from csv_datamanager import CSV_DataManager
 from csv_gui import CSV_GUI
 from csv_plotter import CSV_Plotter
-
-from menu import Menu, MenuOption
 
 def get_arg_parser():
     """ Return a command line argument parser for this module """
@@ -38,7 +37,7 @@ class Application:
     
     def __init__(self, args, config):
         
-        self.parser = CSV_Parser(None)
+        self.parser = CSV_DataManager(None)
         
         self.config = config
         
@@ -67,16 +66,17 @@ class Application:
     
     def action_subplot_change(self, subplot_index, display_name):
 
+        get_module_logger().info("Changing subplot %d to %s", subplot_index, display_name)
+        
         if display_name == "None":
             self.plotter.set_visibility(subplot_index, False)
             self.gui.set_displayed_field(display_name, subplot_index)
-            self.gui.set_dataset_choices(self.parser.get_numeric_fields())
+            self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
         else:
-            field_name = self.parser.get_field_name_from_display_name(display_name)
             self.plotter.set_visibility(subplot_index, True)
             self.gui.set_displayed_field(display_name, subplot_index)
-            self.gui.set_dataset_choices(self.parser.get_numeric_fields())
-            self.plotter.set_dataset(self.parser.get_timestamps(field_name), self.parser.get_dataset(field_name), display_name, subplot_index)
+            self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
+            self.plotter.set_dataset(self.parser.get_timestamps(display_name), self.parser.get_dataset(display_name), display_name, subplot_index)
         
         self.gui.draw(self.plotter)
             
@@ -101,7 +101,7 @@ class Application:
         # Get the units the time period is in (seconds, minutes etc.)
         time_units = self.gui.get_averaging_time_units()
 
-        print("Averaging %s over %d %s" % (field_name, time_period, time_units.lower()))
+        get_module_logger.info("Averaging %s over %d %s", field_name, time_period, time_units.lower())
        
             
     def action_new_data(self):
@@ -109,6 +109,7 @@ class Application:
         new_directory = self.gui.ask_directory("Choose directory to process")
         
         if new_directory != '' and self.parser.directory_has_data_files(new_directory):
+            get_module_logger().info("Parsing directory %s", new_directory)
             self.parser.parse(new_directory)
             self.plot_default_datasets()
             
@@ -127,17 +128,17 @@ class Application:
         self.plotter.suspend_draw(True)
         
         field_count = 0
+        numeric_fields = self.parser.get_numeric_field_names()
         for field in default_fields:
-            if field in self.parser.get_fields():
+            if field in numeric_fields:
                 display_name = self.parser.get_display_name(field)
-                
                 self.action_subplot_change(field_count, display_name)
                 field_count += 1
         
         # Now the plots can be drawn
         self.plotter.suspend_draw(False)
         
-        self.gui.set_dataset_choices(self.parser.get_numeric_fields())
+        self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
         self.gui.draw(self.plotter)
         
 def main():

@@ -7,6 +7,7 @@ Defines a GUI for the CSV viewer application
 
 """
 import os
+import logging
 
 import matplotlib
 matplotlib.use('TkAgg')
@@ -22,6 +23,11 @@ from tkinter import messagebox, filedialog
 
 APP_TITLE = "CSV Viewer"
 
+def get_module_logger():
+
+    """ Returns logger for this module """
+    return logging.getLogger(__name__)
+    
 class TkOptionMenuHelper(Tk.OptionMenu):
     def __init__(self, master, title, options, command, width=15):
         self.master = master
@@ -64,6 +70,8 @@ class CSV_GUI:
         self.root.wm_title(APP_TITLE)
         self.root.protocol("WM_DELETE_WINDOW", self._exit)
         
+        get_module_logger().setLevel(logging.INFO)
+        
         self.application = application
         self.display_fields = [None, None, None]
         
@@ -79,8 +87,9 @@ class CSV_GUI:
         self.add_figure()
         self.add_interface()
     
-    def set_displayed_field(self, field_name, index):
-        self.display_fields[index] = field_name
+    def set_displayed_field(self, display_name, index):
+        get_module_logger().info("Setting subplot %d to %s", index, display_name)
+        self.display_fields[index] = display_name
         
     def ask_directory(self, title):
         """ Brings up Tk askdirectory window and if there are valid files, redraws plot """
@@ -131,6 +140,9 @@ class CSV_GUI:
         
     def set_dataset_choices(self, datasets):
         """ Sets the list of possible datasets that can be selected for each plot """
+        
+        get_module_logger().info("Setting dataset choices %s", ','.join(datasets))
+        
         if not self.ui_exists:
             self.ui_exists = True
             
