@@ -1,4 +1,6 @@
-# CSV Viewer
+=======
+CSVviewer
+=========
 
 ## Summary
 A Python application for graphically displaying data in .CSV files from datalogging hardware
