@@ -15,7 +15,9 @@ import codecs
 #from csv_parser import CSV_Parser
 from csv_datamanager import CSV_DataManager
 from csv_gui import CSV_GUI
-from csv_plotter import CSV_Plotter
+from csv_plotter import CSV_Plotter, CSV_WindPlotter
+
+import numpy as np
 
 APP_TITLE = "CSV Viewer"
 VERSION = "2.3"
@@ -40,22 +42,24 @@ class Application:
     
     def __init__(self, args, config):
         
-        self.parser = CSV_DataManager(None)
+        self.data_manager = CSV_DataManager(None)
         
         self.config = config
         
         self.plotter = CSV_Plotter(config)
+        self.windplotter = CSV_WindPlotter()
+        
         self.gui = CSV_GUI(self)
         
     def get_title(self):
         return APP_TITLE
         
     def action_print_summary(self, menu_level):
-        print("Current directory: %s" % self.parser.folder)
-        print("Found %d valid .csv files" % self.parser.file_count)
-        print("Total records: %d" % self.parser.record_count)
+        print("Current directory: %s" % self.data_manager.folder)
+        print("Found %d valid .csv files" % self.data_manager.file_count)
+        print("Total records: %d" % self.data_manager.record_count)
         print("Data fields:")
-        for field in self.parser.fields:
+        for field in self.data_manager.fields:
             print("\t" + field)
     
     def action_about_dialog(self):
@@ -70,6 +74,10 @@ class Application:
         
         http://www.re-innovation.co.uk
         Nottingham, UK
+        
+        windrose code adapted from
+        http://sourceforge.net/projects/windrose/files/windrose/
+        by joshua_fr
         """ % (APP_TITLE, VERSION)
         
         self.gui.show_info_dialog(info)
@@ -93,16 +101,16 @@ class Application:
         self.plotter.set_visibility(subplot_index, display_name != "None")
         self.gui.set_displayed_field(display_name, subplot_index)
         
-        self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
+        self.gui.set_dataset_choices(self.data_manager.get_numeric_display_names())
 
         if display_name != "None":
-            self.plotter.set_dataset(self.parser.get_timestamps(display_name), self.parser.get_dataset(display_name), display_name, subplot_index)
+            self.plotter.set_dataset(self.data_manager.get_timestamps(display_name), self.data_manager.get_dataset(display_name), display_name, subplot_index)
 
         self.gui.draw(self.plotter)
             
     def action_average_data(self):
         # Get the dataset of interest
-        display_name = self.gui.get_averaging_displayname()       
+        display_name = self.gui.get_selected_dataset_displayname()       
 
         # Get the time period over which to average
         try:
@@ -122,30 +130,59 @@ class Application:
         
         time_period_seconds = time_period * time_multipliers[time_units]
         
-        (data, timestamps) = self.parser.get_dataset_average(display_name, time_period_seconds)
+        (data, timestamps) = self.data_manager.get_dataset_average(display_name, time_period_seconds)
        
         index = self.gui.get_index_of_displayed_plot(display_name)
         
         self.plotter.set_dataset(timestamps, data, display_name, index)
         
         self.gui.draw(self.plotter)
-    
-    def reset_average_data(self):
-        # Get the dataset of interest and reset the original data 
-        display_name = self.gui.get_averaging_displayname()       
-        subplot_index = self.gui.get_index_of_displayed_plot(display_name)
-        self.plotter.set_dataset(self.parser.get_timestamps(display_name), self.parser.get_dataset(display_name), display_name, subplot_index)
-        self.gui.draw(self.plotter)
         
     def action_new_data(self):
         
         new_directory = self.gui.ask_directory("Choose directory to process")
         
-        if new_directory != '' and self.parser.directory_has_data_files(new_directory):
+        if new_directory != '' and self.data_manager.directory_has_data_files(new_directory):
             get_module_logger().info("Parsing directory %s", new_directory)
-            self.parser.parse(new_directory)
+            self.data_manager.parse(new_directory)
             self.plot_default_datasets()
+    
+    def action_special_option(self):
+        
+        display_name = self.gui.get_selected_dataset_displayname()       
+        action = self.gui.get_special_action()
+        
+        if action == "Windrose":
+        
+            get_module_logger().info("Plotting windrose")
+            self.gui.add_new_window('Windrose', (7,6))
             
+            # Get the wind direction and speed data
+            ws = self.data_manager.get_dataset('Wind Speed')
+            wd = self.data_manager.get_dataset('Direction')
+
+            self.windplotter.set_data(ws, wd)
+            
+            # Add window and axes to the GUI
+            self.gui.draw(self.windplotter, 'Windrose')
+            
+        elif action == "Histogram":
+            pass #TODO: put data on histogram
+            
+    def reset_average_data(self):
+        # Get the dataset of interest and reset the original data 
+        display_name = self.gui.get_selected_dataset_displayname()       
+        subplot_index = self.gui.get_index_of_displayed_plot(display_name)
+        
+        get_module_logger().info("Resetting dataset %s on subplot %d", display_name, subplot_index)
+       
+        self.plotter.set_dataset(self.data_manager.get_timestamps(display_name), self.data_manager.get_dataset(display_name), display_name, subplot_index)
+        self.gui.draw(self.plotter)
+    
+    
+    def get_special_dataset_options(self, dataset):
+        return self.data_manager.get_special_dataset_options(dataset)
+        
     def run(self):
         self.gui.run()
        
@@ -161,15 +198,15 @@ class Application:
         self.plotter.suspend_draw(True)
         
         field_count = 0
-        numeric_fields = self.parser.get_numeric_field_names()
+        numeric_fields = self.data_manager.get_numeric_field_names()
         for field in default_fields:
             if field in numeric_fields:
-                display_name = self.parser.get_display_name(field)
+                display_name = self.data_manager.get_display_name(field)
                 self.action_subplot_change(field_count, display_name)
                 field_count += 1
         
         # Now the plots can be drawn
-        self.gui.set_dataset_choices(self.parser.get_numeric_display_names())
+        self.gui.set_dataset_choices(self.data_manager.get_numeric_display_names())
         self.plotter.suspend_draw(False)
         self.gui.draw(self.plotter)
         

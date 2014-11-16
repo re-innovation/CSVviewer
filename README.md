@@ -12,6 +12,9 @@ A Python application for graphically displaying data in .CSV files from datalogg
 
 ## Version Information:
 
+### Version 2.4
+* Added windrose plot
+
 ### Version 2.3
 * Added about dialog
 

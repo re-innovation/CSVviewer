@@ -8,6 +8,8 @@ Defines a data plotter for the CSV viewer application using
 """
 
 from numpy import arange, sin, pi
+
+from windrose import WindroseAxes
     
 class DataSet:
 
@@ -15,6 +17,23 @@ class DataSet:
         self.ylabel = ylabel
         self.data = data
         self.times = times
+        
+class CSV_WindPlotter:
+
+    def __init__(self):
+        pass
+    
+    def set_data(self, speed, direction):
+        self.ws = speed
+        self.wd = direction
+    
+    def draw(self, f):
+        self.ax = WindroseAxes(f, rect=[0.1, 0.1, 0.8, 0.8])
+        f.add_axes(self.ax)
+        self.ax.bar(self.wd, self.ws, normed=True)
+        self.ax.set_title("Windrose (by % in 6 bins)")
+        l = self.ax.legend(borderaxespad=-0.10, fontsize=8, bbox_to_anchor=(-0.2, 0))
+        l.set_title("Wind Speed m/s", prop={"size":8})
         
 class CSV_Plotter:
 

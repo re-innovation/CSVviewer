@@ -10,9 +10,13 @@ import pandas as pd
 import os
 import logging
 
-from csv_special_fields import CSV_Windspeed, CSV_Humidity
+from csv_special_fields import CSV_Windspeed, CSV_Humidity, CSV_WindDirection
 
-special_fields = {"Humidity" : CSV_Humidity("Humidity"), "Wind Pulses" : CSV_Windspeed("Wind Pulses",  0.7)}
+special_fields = {
+    "Humidity" : CSV_Humidity("Humidity"),
+    "Wind Pulses" : CSV_Windspeed("Wind Pulses",  0.7),
+    "Direction" : CSV_WindDirection("Direction")
+}
 
 def valid_filename(filename):
     return filename.lower().endswith(".csv")
@@ -87,17 +91,25 @@ class CSV_DataManager:
     def get_timestamps(self, display_name):
         """ Return timestamps (the dataframe index) for the requested series """
         field_name = self._display_to_field_dict[display_name]
-        return list(self.dataframes[field_name].index)
+        return self.dataframes[field_name].index
 
+    def has_dataset(self, display_name):
+        """ Return true if dataset with this name exists in datasets """
+        return display_name in self._display_to_field_dict.keys()
+    
     def get_dataset(self, display_name):
         """ Return data for the requested series """
         field_name = self._display_to_field_dict[display_name]
-        return list(self.dataframes[field_name].values)
+        return self.dataframes[field_name][field_name].values
     
     def get_dataset_average(self, display_name, average_time_seconds):
         """ Use resampling functionality to get average of dataset over requested number of seconds """
         field_name = self._display_to_field_dict[display_name]
-        resampled_data = self.dataframes[field_name].resample("%dL" % (average_time_seconds * 1000))
+        resampled_data = self.dataframes[field_name].resample("%dS" % average_time_seconds, how='mean')
+        # Resampled data is placed at start of time periods. Re-index to middle of periods.
+        new_index = resampled_data.index + timedelta(seconds = average_time_seconds/2)
+        resampled_data.index = new_index
+        
         return (list(resampled_data[field_name].values), list(resampled_data[field_name].index))
         
     def _set_fieldnames(self, names):
@@ -124,9 +136,16 @@ class CSV_DataManager:
 
         self._numeric_fields = [list(frame.columns.values)[0] for frame in frames]
         
-        # zip and do list comprehension to filter out non-numerics
-        #self._numeric_fields = [column_name for (column_name, is_numeric) in zip(columns, list_of_is_numeric_flags) if is_numeric]
-    
+    def get_special_dataset_options(self, dataset):
+        field_name = self._display_to_field_dict[dataset]
+        try:
+            special_field = special_fields[field_name]
+            return special_field.capabilities()
+        except KeyError:
+            raise#return None
+        except:
+            raise
+            
     def get_numeric_display_names(self):
         """ Return display names of fields that can be considered numeric data """        
         return [self._field_to_display_dict[key] for key in self._numeric_fields]
@@ -148,4 +167,3 @@ class CSV_DataManager:
         """ Returns True if directory has at least one .csv or .CSV file """
         return True in [".csv" in filename.lower() for filename in os.listdir(directory)]
     
-        

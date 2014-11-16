@@ -21,7 +21,10 @@ class CSV_SpecialField:
         
     def convert(self, data, times):
         pass
-
+    
+    def capabilities(self):
+        return None
+        
 class CSV_Humidity(CSV_SpecialField):
     
     def __init__(self, field_name):
@@ -55,8 +58,25 @@ class CSV_Windspeed(CSV_SpecialField):
         # Divide by the delta to get m/s
         speeds = [speed/delta for speed, delta in zip(windspeed, list(deltas_seconds))]
             
-        # Need to re-index thse data to time points in middle of timestamps
+        # Need to re-index these data to time points in middle of timestamps
         old_timestamps = list(dataframe.index.values)[:-1]
         new_timestamps = old_timestamps + (diffs / 2) 
         return pd.DataFrame({self.field_name:speeds}, index=new_timestamps) 
+
+    def capabilities(self):
+        return ["Windrose", "Histogram"]
         
+class CSV_WindDirection(CSV_SpecialField):
+    
+    def __init__(self, field_name):
+        CSV_SpecialField.__init__(self, field_name, "Direction")
+
+    def convert(self, dataframe):
+        # Map cardinal points to degrees (generated random data for 'D' entry)
+        map = {'N':0, 'NE':45, 'E':90, 'SE':135, 'S':180, 'SW':225, 'W':270, 'NW':315, 'D':lambda x: np.randint(0, 359)}
+        dataframe = dataframe.replace({'Direction':map})
+        
+        # Drop first point (since this data will be plotted against windspeed which drops first point also)
+        dataframe = dataframe.ix[1:]
+        
+        return dataframe
