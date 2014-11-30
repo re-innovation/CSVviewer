@@ -15,12 +15,12 @@ import codecs
 #from csv_parser import CSV_Parser
 from csv_datamanager import CSV_DataManager
 from csv_gui import CSV_GUI
-from csv_plotter import CSV_Plotter, CSV_WindPlotter
+from csv_plotter import CSV_Plotter, CSV_WindPlotter, CSV_Histogram
 
 import numpy as np
+from version import VERSION
 
 APP_TITLE = "CSV Viewer"
-VERSION = "2.3"
     
 def get_arg_parser():
     """ Return a command line argument parser for this module """
@@ -47,7 +47,8 @@ class Application:
         self.config = config
         
         self.plotter = CSV_Plotter(config)
-        self.windplotter = CSV_WindPlotter()
+        self.windplotter = CSV_WindPlotter(config)
+        self.histogram = CSV_Histogram(config)
         
         self.gui = CSV_GUI(self)
         
@@ -167,7 +168,16 @@ class Application:
             self.gui.draw(self.windplotter, 'Windrose')
             
         elif action == "Histogram":
-            pass #TODO: put data on histogram
+            get_module_logger().info("Plotting histogram")
+            self.gui.add_new_window('Histogram', (7,6))
+            
+            # Get the windspeed data
+            ws = self.data_manager.get_dataset('Wind Speed')
+            
+            self.histogram.set_data(ws)
+            
+            # Add window and axes to the GUI
+            self.gui.draw(self.histogram, 'Histogram')
             
     def reset_average_data(self):
         # Get the dataset of interest and reset the original data 
