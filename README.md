@@ -1,4 +1,3 @@
-=======
 CSVviewer
 =========
 
@@ -6,11 +5,18 @@ CSVviewer
 A Python application for graphically displaying data in .CSV files from datalogging hardware
 
 ## Requirements:
-*Python 3.3+
-*pandas
-*matplotlib
+* Python 3.3+
+* pandas
+* matplotlib
+
+## Installation:
+
+See [INSTALL.md](http://www.github.com/re-innovation/CSVviewer/INSTALL.md)
 
 ## Version Information:
+
+### Version 2.5
+* Added histogram plot
 
 ### Version 2.4
 * Added windrose plot
@@ -28,7 +34,7 @@ A Python application for graphically displaying data in .CSV files from datalogg
 * Removed csv_parser.py and replaced with csv_datamanager.py
 * Uses pandas library to provide better dataset math functionality
 * Should make development of advanced features much easier
-* This version has no functional difference to verion 1.0
+* This version has no functional difference to version 1.0
 
 ### Version 1.0
 * Removed menu driven interface in favour of GUI
