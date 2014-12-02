@@ -18,6 +18,10 @@ from csv_gui import CSV_GUI
 from csv_plotter import CSV_Plotter, CSV_WindPlotter, CSV_Histogram
 
 import numpy as np
+
+import queue
+import threading
+
 from version import VERSION
 
 APP_TITLE = "CSV Viewer"
@@ -41,8 +45,6 @@ def get_module_logger():
 class Application:
     
     def __init__(self, args, config):
-        
-        self.data_manager = CSV_DataManager(None)
         
         self.config = config
         
@@ -143,11 +145,36 @@ class Application:
         
         new_directory = self.gui.ask_directory("Choose directory to process")
         
-        if new_directory != '' and self.data_manager.directory_has_data_files(new_directory):
+        if new_directory != '' and CSV_DataManager.directory_has_data_files(new_directory):
             get_module_logger().info("Parsing directory %s", new_directory)
-            self.data_manager.parse(new_directory)
-            self.plot_default_datasets()
+            self.gui.reset_data_loading_bar(new_directory)
+            
+            self.msg_queue = queue.Queue()
+            self.data_manager = CSV_DataManager(self.msg_queue, new_directory)
+            self.data_manager.start()
+                    
+            self.loading_timer = threading.Timer(0.1, self.check_data_manager_status)
+            self.loading_timer.start()
     
+    def check_data_manager_status(self):
+        dataloader_finished = False
+        try:
+            msg = self.msg_queue.get(0)
+            if msg == 100:
+                dataloader_finished = True
+                self.gui.hide_progress_bar()
+                self.plot_default_datasets()
+            else:
+                self.gui.set_data_load_percent(msg)
+        except queue.Empty:
+            pass
+        except:
+            raise
+        
+        if not dataloader_finished:
+            self.loading_timer = threading.Timer(0.1, self.check_data_manager_status)
+            self.loading_timer.start()
+        
     def action_special_option(self):
         
         display_name = self.gui.get_selected_dataset_displayname()       
@@ -165,8 +192,12 @@ class Application:
             self.windplotter.set_data(ws, wd)
             
             # Add window and axes to the GUI
-            self.gui.draw(self.windplotter, 'Windrose')
-            
+            try:
+                self.gui.draw(self.windplotter, 'Windrose')
+            except Exception as e:
+                get_module_logger().info("Could not plot windrose (%s)" % e)
+                self.gui.show_info_dialog("Could not plot windrose - check that the windspeed and direction data are valid")
+                
         elif action == "Histogram":
             get_module_logger().info("Plotting histogram")
             self.gui.add_new_window('Histogram', (7,6))

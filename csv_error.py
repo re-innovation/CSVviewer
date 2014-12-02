@@ -7,8 +7,11 @@ Defines an error class for the application
 """
 
 class CSVError(Exception):
-    def __init__(self, msg, expr):
+    def __init__(self, msg, expr = None):
         self.msg = msg
         self.expr = expr
     def __str__(self):
-        return self.msg + "(" + expr + ")"
+        if self.expr is not None:
+            return self.msg + "(" + expr + ")"
+        else:
+            return self.msg

@@ -63,8 +63,15 @@ class CSV_Windspeed(CSV_SpecialField):
         new_timestamps = old_timestamps + (diffs / 2) 
         return pd.DataFrame({self.field_name:speeds}, index=new_timestamps) 
 
-    def capabilities(self):
-        return ["Windrose", "Histogram"]
+    def capabilities(self, manager):
+        """ Returns a list of the special functions that can be performed with this dataset """
+        
+        caps = ["Histogram"] # Can always do histogram with this data
+        
+        if manager.has_dataset("Direction") and manager.len("Direction") == manager.len("Wind Speed"):
+            caps.append("Windrose")
+            
+        return caps
         
 class CSV_WindDirection(CSV_SpecialField):
     
@@ -72,11 +79,14 @@ class CSV_WindDirection(CSV_SpecialField):
         CSV_SpecialField.__init__(self, field_name, "Direction")
 
     def convert(self, dataframe):
-        # Map cardinal points to degrees (generated random data for 'D' entry)
-        map = {'N':0, 'NE':45, 'E':90, 'SE':135, 'S':180, 'SW':225, 'W':270, 'NW':315, 'D':lambda x: np.randint(0, 359)}
+        # Map cardinal points to degrees (replaced with "not a number" 'D' entry)
+        map = {'N':0, 'NE':45, 'E':90, 'SE':135, 'S':180, 'SW':225, 'W':270, 'NW':315, 'D':np.nan}
         dataframe = dataframe.replace({'Direction':map})
         
         # Drop first point (since this data will be plotted against windspeed which drops first point also)
         dataframe = dataframe.ix[1:]
+        
+        # Drop any NaNs
+        dataframe = dataframe.dropna()
         
         return dataframe

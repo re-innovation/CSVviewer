@@ -15,6 +15,11 @@ See [INSTALL.md](http://www.github.com/re-innovation/CSVviewer/INSTALL.md)
 
 ## Version Information:
 
+### Version 2.6
+* Added progress bar when loading new data from folder
+  * Datamanager now runs in seperate thread to allow this
+* Windrose plot is only an option when speed and direction data are matched
+
 ### Version 2.5
 * Added histogram plot
 
