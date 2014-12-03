@@ -20,7 +20,7 @@ from matplotlib.backend_bases import key_press_handler
 from matplotlib.figure import Figure
 
 import tkinter as Tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
 
 PROG_DIR = sys.path[0]
 
@@ -70,7 +70,7 @@ class CSV_GUI:
         self.root = Tk.Tk()
         
         # Note: keeping PhotoImage in self.icon stops it being garbage collected.
-        # Therefore, don't simplify these lines by getting rid of self.icon
+        # Therefore, don't simplify these lines by getting rid of self.icon!
         self.icon = Tk.PhotoImage(file=os.path.join(PROG_DIR, "logo.png"))
         self.root.iconphoto(True, self.icon)
         
@@ -96,22 +96,48 @@ class CSV_GUI:
         
         self.ui_exists = False
         
-        self.add_new_window('Main', (8,5), True)
+        self.add_new_window('Main', (8,5))
         self.add_interface()
+        
+    def reset_data_loading_bar(self, folder):
+        self.add_new_window("Progress Bar", (5, 0.5), False, False) 
+ 
+        self.progress_bar_label = Tk.Label(self.windows["Progress Bar"], text= "Loading from folder '%s'" % folder)
+        self.progress_bar_var = Tk.IntVar()
+        self.progress_bar = ttk.Progressbar(
+            self.windows["Progress Bar"],
+            orient="horizontal", length="5i", mode="determinate",
+            variable = self.progress_bar_var)
+        
+        self.progress_bar_label.pack()
+        self.progress_bar.pack()
+        
+    def set_data_load_percent(self, pc):
+        self.progress_bar_var.set(pc)
     
-    def add_new_window(self, key, size, add_nav_toolbar = False):
-        """ Adds a new Tk window, if there isn't one with the requested key """
+    def hide_progress_bar(self):
+        self.kill_window("Progress Bar")
+        
+    def kill_window(self, window):
+        try:  
+            self.windows["Progress Bar"].destroy()
+        except KeyError:
+            pass
+
+    def add_new_window(self, key, size, add_figure = True, add_nav_toolbar = True):
+        """ Adds a new Tk window, overwriting if the key already exists """
         window = self.root if key == "Main" else Tk.Toplevel(self.root)
-        frame = Tk.Frame(window)
-        
-        self.figures[key] = Figure(figsize=size, dpi=100)
-        self.canvases[key] = FigureCanvasTkAgg(self.figures[key], master=window)           
-        self.canvases[key].get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-        
-        if add_nav_toolbar:
-            self.toolbars[key] = NavigationToolbar2TkAgg( self.canvases[key], window )
-            self.toolbars[key].update()
+        self.windows[key] = window
+        self.frames[key] = Tk.Frame(window)
+        if add_figure:
+            self.figures[key] = Figure(figsize=size, dpi=100)
             
+            self.canvases[key] = FigureCanvasTkAgg(self.figures[key], master=window)           
+            self.canvases[key].get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
+            if add_nav_toolbar:
+                self.toolbars[key] = NavigationToolbar2TkAgg( self.canvases[key], window )
+                self.toolbars[key].update()
+                
     def get_figure(self, key):
         """ Returns a handle to the requested figure (None if key does not exist) """
         try:

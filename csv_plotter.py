@@ -47,26 +47,31 @@ class CSV_WindPlotter:
         
         """ Draw windrose plot of current data on figure """
         
-        self.ax = WindroseAxes(f, rect=[0.1, 0.1, 0.8, 0.8])
-        f.add_axes(self.ax)
-        self.ax.bar(self.wd, self.ws, normed=True)
-        self.ax.set_title("Windrose (by % in 6 bins)")
-        l = self.ax.legend(borderaxespad=-0.10, fontsize=8, bbox_to_anchor=(-0.2, 0))
-        
-        legend_title = "Wind Speed"
-        
         try:
-            units = self.config['UNITS'] # Get unit strings from config
+            self.ax = WindroseAxes(f, rect=[0.1, 0.1, 0.8, 0.8])
+            f.add_axes(self.ax)
+        
+            self.ax.bar(self.wd, self.ws, normed=True)
+            
+            self.ax.set_title("Windrose (by % in 6 bins)")
+            l = self.ax.legend(borderaxespad=-0.10, fontsize=8, bbox_to_anchor=(-0.2, 0))
+            
+            legend_title = "Wind Speed"
+            
             try:
-                legend_title  = legend_title  + " " + units["Wind Speed"].strip() #Try adding a unit to the legend title
-            except KeyError:
-                pass #If no unit exists, just use the axis label with no units
-        
-        except (KeyError, ValueError):
-            pass # If no units exists, or the config isn't valid, just use title without units
-        
-        l.set_title(legend_title , prop={"size":8})
-
+                units = self.config['UNITS'] # Get unit strings from config
+                try:
+                    legend_title  = legend_title  + " " + units["Wind Speed"].strip() #Try adding a unit to the legend title
+                except KeyError:
+                    pass #If no unit exists, just use the axis label with no units
+            
+            except (KeyError, ValueError):
+                pass # If no units exists, or the config isn't valid, just use title without units
+            
+            l.set_title(legend_title , prop={"size":8})
+        except:
+            raise
+            
 class CSV_Histogram:
 
     """ Implements plotting of windspeed histogram """
