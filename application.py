@@ -12,7 +12,6 @@ import logging
 import configparser
 import codecs
 
-#from csv_parser import CSV_Parser
 from csv_datamanager import CSV_DataManager
 from csv_gui import CSV_GUI
 from csv_plotter import CSV_Plotter, CSV_WindPlotter, CSV_Histogram
@@ -22,9 +21,7 @@ import numpy as np
 import queue
 import threading
 
-from version import VERSION
-
-APP_TITLE = "CSV Viewer"
+from app_info import VERSION, TITLE
     
 def get_arg_parser():
     """ Return a command line argument parser for this module """
@@ -45,7 +42,6 @@ def get_module_logger():
 class Application:
     
     def __init__(self, args, config):
-        
         self.config = config
         
         self.plotter = CSV_Plotter(config)
@@ -53,9 +49,6 @@ class Application:
         self.histogram = CSV_Histogram(config)
         
         self.gui = CSV_GUI(self)
-        
-    def get_title(self):
-        return APP_TITLE
         
     def action_print_summary(self, menu_level):
         print("Current directory: %s" % self.data_manager.folder)
@@ -81,7 +74,7 @@ class Application:
         windrose code adapted from
         http://sourceforge.net/projects/windrose/files/windrose/
         by joshua_fr
-        """ % (APP_TITLE, VERSION)
+        """ % (TITLE, VERSION)
         
         self.gui.show_info_dialog(info)
         
@@ -268,6 +261,7 @@ def main():
     app = Application(args, conf_parser)
     
     app.run()
-    
+            
 if __name__ == "__main__":
     main()
+

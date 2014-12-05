@@ -1,13 +1,13 @@
 import sys
 from cx_Freeze import setup, Executable
-from version import VERSION
+from app_info import VERSION
 
 import matplotlib
 
 build_exe_options = {
     'packages':["pandas"],
     'includes' : ["pandas.msgpack"],
-    'include_files' : ['config.ini'],
+    'include_files' : ['config.ini', 'logo.png'],
     'excludes' : ['_gtkagg', '_wxagg'], ## Exclude some backends to reduce size
     }
 
