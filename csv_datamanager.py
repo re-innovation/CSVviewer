@@ -13,6 +13,8 @@ import logging
 import queue
 import threading
 
+from datetime import timedelta
+
 from csv_special_fields import CSV_Windspeed, CSV_Humidity, CSV_WindDirection
 
 special_fields = {

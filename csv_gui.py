@@ -22,7 +22,7 @@ from matplotlib.figure import Figure
 import tkinter as Tk
 from tkinter import messagebox, filedialog, ttk
 
-PROG_DIR = sys.path[0]
+import app_info
 
 def get_module_logger():
 
@@ -66,12 +66,12 @@ class CSV_GUI:
     def __init__(self, application):
         
         self.application = application
-        self.title = self.application.get_title()
+        self.title = app_info.TITLE
         self.root = Tk.Tk()
         
         # Note: keeping PhotoImage in self.icon stops it being garbage collected.
         # Therefore, don't simplify these lines by getting rid of self.icon!
-        self.icon = Tk.PhotoImage(file=os.path.join(PROG_DIR, "logo.png"))
+        self.icon = Tk.PhotoImage(file=os.path.join(app_info.dir(), "logo.png"))
         self.root.iconphoto(True, self.icon)
         
         self.root.wm_title(self.title)
