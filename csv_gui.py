@@ -71,7 +71,7 @@ class CSV_GUI:
         
         # Note: keeping PhotoImage in self.icon stops it being garbage collected.
         # Therefore, don't simplify these lines by getting rid of self.icon!
-        self.icon = Tk.PhotoImage(file=os.path.join(app_info.dir(), "logo.png"))
+        self.icon = Tk.PhotoImage(file=os.path.join(app_info.app_dir(), "logo.png"))
         self.root.iconphoto(True, self.icon)
         
         self.root.wm_title(self.title)

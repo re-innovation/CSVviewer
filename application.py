@@ -11,7 +11,7 @@ import logging
 import configparser
 import codecs
 
-from csv_datamanager import CSV_DataManager
+from datamanager import DataManager
 from csv_gui import CSV_GUI
 from csv_plotter import CSV_Plotter, CSV_WindPlotter, CSV_Histogram
 
@@ -177,12 +177,12 @@ class Application:
 
         new_directory = self.gui.ask_directory("Choose directory to process")
 
-        if new_directory != '' and CSV_DataManager.directory_has_data_files(new_directory):
+        if new_directory != '' and DataManager.directory_has_data_files(new_directory):
             get_module_logger().info("Parsing directory %s", new_directory)
             self.gui.reset_data_loading_bar(new_directory)
 
             self.msg_queue = queue.Queue()
-            self.data_manager = CSV_DataManager(self.msg_queue, new_directory)
+            self.data_manager = DataManager(self.msg_queue, new_directory)
             self.data_manager.start()
 
             self.loading_timer = threading.Timer(0.1, self.check_data_manager_status)
