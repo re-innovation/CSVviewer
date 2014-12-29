@@ -12,9 +12,8 @@ import configparser
 import codecs
 
 from datamanager import DataManager
-from csv_gui import CSV_GUI
+from gui import GUI, ask_directory, run_gui, show_info_dialog
 from csv_plotter import CSV_Plotter, CSV_WindPlotter, CSV_Histogram
-
 
 import queue
 import threading
@@ -67,7 +66,7 @@ class Application:
         self.loading_timer = None
         self.data_manager = None
 
-        self.gui = CSV_GUI(self)
+        self.gui = GUI(self)
 
     def action_about_dialog(self):
         """ Show information about this program """
@@ -87,7 +86,7 @@ class Application:
         by joshua_fr
         """ % (TITLE, VERSION)
 
-        self.gui.show_info_dialog(info)
+        show_info_dialog(info)
 
     def action_subplot1_change(self, dataset_choice):
         """ Pass through to action_subplot_change """
@@ -128,7 +127,7 @@ class Application:
         """ Handles request to show the average of a dataset """
 
         # Get the dataset of interest
-        display_name = self.gui.get_selected_dataset_displayname()
+        display_name = self.gui.get_selected_dataset_name()
 
         # Get the time period over which to average
         try:
@@ -160,7 +159,7 @@ class Application:
 
         """ Get the dataset of interest and reset the original data """
 
-        display_name = self.gui.get_selected_dataset_displayname()
+        display_name = self.gui.get_selected_dataset_name()
         subplot_index = self.gui.get_index_of_displayed_plot(display_name)
 
         get_module_logger().info("Resetting dataset %s on subplot %d", display_name, subplot_index)
@@ -175,11 +174,11 @@ class Application:
 
         """ Handles request to show open a new set of CSV files """
 
-        new_directory = self.gui.ask_directory("Choose directory to process")
+        new_directory = ask_directory("Choose directory to process")
 
         if new_directory != '' and DataManager.directory_has_data_files(new_directory):
             get_module_logger().info("Parsing directory %s", new_directory)
-            self.gui.reset_data_loading_bar(new_directory)
+            self.gui.reset_and_show_progress_bar(new_directory)
 
             self.msg_queue = queue.Queue()
             self.data_manager = DataManager(self.msg_queue, new_directory)
@@ -200,7 +199,7 @@ class Application:
                 self.gui.hide_progress_bar()
                 self.plot_default_datasets()
             else:
-                self.gui.set_data_load_percent(msg)
+                self.gui.set_progress_percent(msg)
         except queue.Empty:
             pass
         except:
@@ -233,7 +232,7 @@ class Application:
                 self.gui.draw(self.windplotter, 'Windrose')
             except Exception as exc: #pylint: disable=broad-except
                 get_module_logger().info("Could not plot windrose (%s)", exc)
-                self.gui.show_info_dialog(
+                show_info_dialog(
                     "Could not plot windrose - check that the windspeed and direction data are valid")
 
         elif action == "Histogram":
@@ -251,14 +250,6 @@ class Application:
     def get_special_dataset_options(self, dataset):
         """ Callback fron other modules to get the special dataset names (via data manager) """
         return self.data_manager.get_special_dataset_options(dataset)
-
-    def run(self):
-        """
-        When this is called, the GUI takes over.
-        The call to self.gui.run() does not return.
-        All events are handled via GUI handlers and application callbacks.
-        """
-        self.gui.run()
 
     def plot_default_datasets(self):
 
@@ -301,8 +292,10 @@ def main():
     conf_parser.read_file(codecs.open("config.ini", "r", "utf8"))
 
     app = Application(args, conf_parser)
-
-    app.run()
+    
+    # The call to run() does not return.
+    # All events are handled via GUI handlers and application callbacks.
+    run_gui()
 
 if __name__ == "__main__":
     main()
