@@ -13,7 +13,7 @@ import codecs
 
 from datamanager import DataManager
 from gui import GUI, ask_directory, run_gui, show_info_dialog
-from csv_plotter import CSV_Plotter, CSV_WindPlotter, CSV_Histogram
+from plotter import Plotter, WindPlotter, Histogram
 
 import queue
 import threading
@@ -58,9 +58,9 @@ class Application:
 
         self.config = config
 
-        self.plotter = CSV_Plotter(config)
-        self.windplotter = CSV_WindPlotter(config)
-        self.histogram = CSV_Histogram(config)
+        self.plotter = Plotter(config)
+        self.windplotter = WindPlotter(config)
+        self.histogram = Histogram(config)
 
         self.msg_queue = None
         self.loading_timer = None
@@ -68,8 +68,13 @@ class Application:
 
         self.gui = GUI(self)
 
-    def action_about_dialog(self):
-        """ Show information about this program """
+    def action_about_dialog(self): # pylint: disable=no-self-use
+        """
+        Show information about this program
+        pylint warning no-self-use is disabled. While this function
+        makes no use of self, it needs to be part of the application object
+        as it gets used by the GUI
+        """
         info = """
         %s
         Version %s
@@ -291,10 +296,11 @@ def main():
     conf_parser = configparser.RawConfigParser()
     conf_parser.read_file(codecs.open("config.ini", "r", "utf8"))
 
-    app = Application(args, conf_parser)
-    
     # The call to run() does not return.
     # All events are handled via GUI handlers and application callbacks.
+
+    _ = Application(args, conf_parser)
+
     run_gui()
 
 if __name__ == "__main__":
