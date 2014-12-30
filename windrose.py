@@ -1,23 +1,49 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+"""
+application.py
+
+@author: James Fowkes
+
+Adapted from Lionel Roubeyrie as below.
+
+Generates windrose plot of speed/direction data
+"""
+
 __version__ = '1.4'
 __author__ = 'Lionel Roubeyrie'
 __mail__ = 'lionel.roubeyrie@gmail.com'
 __license__ = 'CeCILL-B'
 
+# This module uses a LOT of numpy calls
+# pylint's underlying astroid library cannot find numpy functions
+# So disable the warning for the WHOLE MODULE <-- somewhat dangerous
+# http://stackoverflow.com/questions/20553551/how-do-i-get-pylint-to-recognize-numpy-members
+# This suggests that another astroid version can do this, so check in the future.
+#pylint: disable=no-member
+#
+# Also, there are some lines that use numpy's "advanced indexing" feature. pylint assumes
+# these are normal indexes and throws a warning. Therefore disable=invalid-sequence-index
+# is used for these lines.
+
 import matplotlib
 import matplotlib.cm as cm
 import numpy as np
-from matplotlib.patches import Rectangle, Polygon
-from matplotlib.ticker import ScalarFormatter, AutoLocator
-from matplotlib.text import Text, FontProperties
+from matplotlib.patches import Rectangle
 from matplotlib.projections.polar import PolarAxes
 from numpy.lib.twodim_base import histogram2d
 from pylab import poly_between
 
 RESOLUTION = 100
 ZBASE = -1000 #The starting zorder for all drawing, negative to have the grid on
+
+def _colors(cmap, num):
+    '''
+    Returns a list of n colors based on the colormap cmap
+
+    '''
+    return [cmap(i) for i in np.linspace(0.0, 1.0, num)]
 
 class WindroseAxes(PolarAxes):
     """
@@ -30,13 +56,16 @@ class WindroseAxes(PolarAxes):
         """
         See Axes base class for args and kwargs documentation
         """
-        
-        #Uncomment to have the possibility to change the resolution directly 
+
+        #Uncomment to have the possibility to change the resolution directly
         #when the instance is created
         #self.RESOLUTION = kwargs.pop('resolution', 100)
         PolarAxes.__init__(self, *args, **kwargs)
         self.set_aspect('equal', adjustable='box', anchor='C')
         self.radii_angle = 67.5
+
+        self.legend_ = None
+
         self.cla()
 
 
@@ -56,33 +85,28 @@ class WindroseAxes(PolarAxes):
 
         self.patches_list = list()
 
-
-    def _colors(self, cmap, n):
-        '''
-        Returns a list of n colors based on the colormap cmap
-
-        '''
-        return [cmap(i) for i in np.linspace(0.0, 1.0, n)]
-
-
     def set_radii_angle(self, **kwargs):
         """
         Set the radii labels angle
         """
 
-        null = kwargs.pop('labels', None)
+        _ = kwargs.pop('labels', None)
         angle = kwargs.pop('angle', None)
         if angle is None:
             angle = self.radii_angle
         self.radii_angle = angle
         radii = np.linspace(0.1, self.get_rmax(), 6)
-        radii_labels = [ "%.1f" %r for r in radii ]
+        radii_labels = ["%.1f" %r for r in radii]
         radii_labels[0] = "" #Removing label 0
-        null = self.set_rgrids(radii=radii, labels=radii_labels,
-                               angle=self.radii_angle, **kwargs)
+        _ = self.set_rgrids(radii=radii, labels=radii_labels,
+                            angle=self.radii_angle, **kwargs)
 
 
     def _update(self):
+
+        """
+        Updates the radii information for plotting patches
+        """
         self.set_rmax(rmax=np.max(np.sum(self._info['table'], axis=0)))
         self.set_radii_angle(angle=self.radii_angle)
 
@@ -123,31 +147,37 @@ class WindroseAxes(PolarAxes):
         """
 
         def get_handles():
+
+            """
+            Return a list of rectangles for each patch in that patches colour
+            """
+
             handles = list()
-            for p in self.patches_list:
-                if isinstance(p, matplotlib.patches.Polygon) or \
-                isinstance(p, matplotlib.patches.Rectangle):
-                    color = p.get_facecolor()
-                elif isinstance(p, matplotlib.lines.Line2D):
-                    color = p.get_color()
+            for patch in self.patches_list:
+                if isinstance(patch, matplotlib.patches.Polygon) or \
+                isinstance(patch, matplotlib.patches.Rectangle):
+                    color = patch.get_facecolor()
+                elif isinstance(patch, matplotlib.lines.Line2D):
+                    color = patch.get_color()
                 else:
                     raise AttributeError("Can't handle patches")
-                handles.append(Rectangle((0, 0), 0.2, 0.2,
-                    facecolor=color, edgecolor='black'))
+                handles.append(Rectangle((0, 0), 0.2, 0.2, facecolor=color, edgecolor='black'))
             return handles
 
         def get_labels():
+
+            """ Make label strings from label information in dict """
+
             labels = np.copy(self._info['bins'])
             labels = ["[%.1f : %0.1f[" %(labels[i], labels[i+1]) \
                       for i in range(len(labels)-1)]
             return labels
 
-        null = kwargs.pop('labels', None)
-        null = kwargs.pop('handles', None)
+        _ = kwargs.pop('labels', None)
+        _ = kwargs.pop('handles', None)
         handles = get_handles()
         labels = get_labels()
-        self.legend_ = matplotlib.legend.Legend(self, handles, labels,
-                                                loc, **kwargs)
+        self.legend_ = matplotlib.legend.Legend(self, handles, labels, loc, **kwargs)
         return self.legend_
 
 
@@ -156,7 +186,7 @@ class WindroseAxes(PolarAxes):
         Internal method used by all plotting commands
         """
         #self.cla()
-        null = kwargs.pop('zorder', None)
+        _ = kwargs.pop('zorder', None)
 
         #Init of the bins array if not set
         bins = kwargs.pop('bins', None)
@@ -184,7 +214,7 @@ class WindroseAxes(PolarAxes):
         else:
             if cmap is None:
                 cmap = cm.jet
-            colors = self._colors(cmap, nbins)
+            colors = _colors(cmap, nbins)
 
         #Building the angles list
         angles = np.arange(0, -2*np.pi, -2*np.pi/nsector) + np.pi/2
@@ -192,8 +222,9 @@ class WindroseAxes(PolarAxes):
         normed = kwargs.pop('normed', False)
         blowto = kwargs.pop('blowto', False)
 
-        #Set the global information dictionnary
-        self._info['direction'], self._info['bins'], self._info['table'] = histogram(direction, var, bins, nsector, normed, blowto)
+        #Set the global information dictionary
+        information_dict = histogram(direction, var, bins, nsector, normed, blowto)
+        self._info['direction'], self._info['bins'], self._info['table'] = information_dict
 
         return bins, nbins, nsector, colors, angles, kwargs
 
@@ -230,22 +261,23 @@ class WindroseAxes(PolarAxes):
 
         """
 
-        bins, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var,
-                                                                       **kwargs)
+        # _ is for bins, which is not required
+        _, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var, **kwargs)
 
         #closing lines
         angles = np.hstack((angles, angles[-1]-2*np.pi/nsector))
-        vals = np.hstack((self._info['table'],
-                         np.reshape(self._info['table'][:,0],
-                                   (self._info['table'].shape[0], 1))))
-        
+        vals = np.hstack((
+            self._info['table'],
+            np.reshape(
+                self._info['table'][:, 0], #pylint: disable=invalid-sequence-index
+                (self._info['table'].shape[0], 1))))
+
         offset = 0
         for i in range(nbins):
-            val = vals[i,:] + offset
+            val = vals[i, :] + offset
             offset += vals[i, :]
             zorder = ZBASE + nbins - i
-            patch = self.plot(angles, val, color=colors[i], zorder=zorder,
-                              **kwargs)
+            patch = self.plot(angles, val, color=colors[i], zorder=zorder, **kwargs)
             self.patches_list.extend(patch)
         self._update()
 
@@ -282,23 +314,30 @@ class WindroseAxes(PolarAxes):
 
         """
 
-        bins, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var,
-                                                                       **kwargs)
-        null = kwargs.pop('facecolor', None)
-        null = kwargs.pop('edgecolor', None)
-        
+        # This function does have a lot of local variables and is a candidate for refactoring.
+        # In the meantime, disable the warning
+        #pylint: disable=too-many-locals
+
+        # _ is for bins, which is not required
+        _, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var, **kwargs)
+        _ = kwargs.pop('facecolor', None)
+        _ = kwargs.pop('edgecolor', None)
+
         #closing lines
         angles = np.hstack((angles, angles[-1]-2*np.pi/nsector))
-        vals = np.hstack((self._info['table'],
-                         np.reshape(self._info['table'][:,0],
-                                   (self._info['table'].shape[0], 1))))
+        vals = np.hstack((
+            self._info['table'],
+            np.reshape(
+                self._info['table'][:, 0], #pylint: disable=invalid-sequence-index
+                (self._info['table'].shape[0], 1))))
+
         offset = 0
         for i in range(nbins):
-            val = vals[i,:] + offset
+            val = vals[i, :] + offset
             offset += vals[i, :]
             zorder = ZBASE + nbins - i
-            xs, ys = poly_between(angles, 0, val)
-            patch = self.fill(xs, ys, facecolor=colors[i],
+            xlocs, ylocs = poly_between(angles, 0, val)
+            patch = self.fill(xlocs, ylocs, facecolor=colors[i],
                               edgecolor=colors[i], zorder=zorder, **kwargs)
             self.patches_list.extend(patch)
 
@@ -332,9 +371,14 @@ class WindroseAxes(PolarAxes):
         * opening : float - between 0.0 and 1.0, to control the space between
         each sector (1.0 for no space)
         """
-        
-        bins, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var, **kwargs)
-        null = kwargs.pop('facecolor', None)
+
+        # This function does have a lot of local variables and is a candidate for refactoring.
+        # In the meantime, disable the warning
+        #pylint: disable=too-many-locals
+
+        # _ is for bins, which is not required
+        _, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var, **kwargs)
+        _ = kwargs.pop('facecolor', None)
         edgecolor = kwargs.pop('edgecolor', None)
         if edgecolor is not None:
             if not isinstance(edgecolor, str):
@@ -349,10 +393,11 @@ class WindroseAxes(PolarAxes):
             offset = 0
             for i in range(nbins):
                 if i > 0:
-                    offset += self._info['table'][i-1, j]
-                val = self._info['table'][i, j]
+                    offset += self._info['table'][i-1, j] #pylint: disable=invalid-sequence-index
+                val = self._info['table'][i, j] #pylint: disable=invalid-sequence-index
                 zorder = ZBASE + nbins - i
-                patch = Rectangle((angles[j]-opening/2, offset), opening, val,
+                patch = Rectangle(
+                    (angles[j]-opening/2, offset), opening, val,
                     facecolor=colors[i], edgecolor=edgecolor, zorder=zorder,
                     **kwargs)
                 self.add_patch(patch)
@@ -390,9 +435,13 @@ class WindroseAxes(PolarAxes):
 
         """
 
-        bins, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var,
-                                                                       **kwargs)
-        null = kwargs.pop('facecolor', None)
+        # This function does have a lot of local variables and is a candidate for refactoring.
+        # In the meantime, disable the warning
+        #pylint: disable=too-many-locals
+
+        # _ is for bins, which is not required
+        _, nbins, nsector, colors, angles, kwargs = self._init_plot(direction, var, **kwargs)
+        _ = kwargs.pop('facecolor', None)
         edgecolor = kwargs.pop('edgecolor', None)
         if edgecolor is not None:
             if not isinstance(edgecolor, str):
@@ -403,10 +452,11 @@ class WindroseAxes(PolarAxes):
             offset = 0
             for i in range(nbins):
                 if i > 0:
-                    offset += self._info['table'][i-1, j]
-                val = self._info['table'][i, j]
+                    offset += self._info['table'][i-1, j] #pylint: disable=invalid-sequence-index
+                val = self._info['table'][i, j] #pylint: disable=invalid-sequence-index
                 zorder = ZBASE + nbins - i
-                patch = Rectangle((angles[j]-opening[i]/2, offset), opening[i],
+                patch = Rectangle(
+                    (angles[j]-opening[i]/2, offset), opening[i],
                     val, facecolor=colors[i], edgecolor=edgecolor,
                     zorder=zorder, **kwargs)
                 self.add_patch(patch)
@@ -414,7 +464,7 @@ class WindroseAxes(PolarAxes):
                     self.patches_list.append(patch)
         self._update()
 
-def histogram(direction, var, bins, nsector, normed=False, blowto=False):
+def histogram(direction, var, bins, nsector, normed=False, blowto=False): #pylint: disable=too-many-arguments
     """
     Returns an array where, for each sector of wind
     (centred on the north), we have the number of time the wind comes with a
@@ -436,7 +486,7 @@ def histogram(direction, var, bins, nsector, normed=False, blowto=False):
 
     angle = 360./nsector
 
-    dir_bins = np.arange(-angle/2 ,360.+angle, angle, dtype=np.float)
+    dir_bins = np.arange(-angle/2, 360.+angle, angle, dtype=np.float)
     dir_edges = dir_bins.tolist()
     dir_edges.pop(-1)
     dir_edges[0] = dir_edges.pop(-1)
@@ -447,11 +497,11 @@ def histogram(direction, var, bins, nsector, normed=False, blowto=False):
 
     if blowto:
         direction = direction + 180.
-        direction[direction>=360.] = direction[direction>=360.] - 360
+        direction[direction >= 360.] = direction[direction >= 360.] - 360
 
     table = histogram2d(x=var, y=direction, bins=[var_bins, dir_bins], normed=False)[0]
     # add the last value to the first to have the table of North winds
-    table[:,0] = table[:,0] + table[:,-1]
+    table[:, 0] = table[:, 0] + table[:, -1]
     # and remove the last col
     table = table[:, :-1]
     if normed:
